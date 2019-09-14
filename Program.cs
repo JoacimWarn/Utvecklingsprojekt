@@ -32,8 +32,12 @@ namespace ConsoleApp3
             {
 
                 bild.Read(frame);
+                Mat gray = new Mat();
 
-                Cv2.ImShow("hej", frame);
+                //Cv2.Canny(frame, 100, 100);
+                Cv2.CvtColor(frame, gray, ColorConversionCodes.BGR2GRAY);
+
+                Cv2.ImShow("hej", gray);
                //Cv2.ImShow("hej", frame);
 
             }
