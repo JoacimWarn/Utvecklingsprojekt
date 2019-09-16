@@ -11,42 +11,109 @@ using OpenCvSharp.Extensions;
 
 namespace ConsoleApp3
 {
+
+
+
     class Program
     {
+        VideoCapture videoCapture;
+        CascadeClassifier face_cascade;
+        CascadeClassifier eyes_cascade;
+        List<FaceFeature> features = new List<FaceFeature>();
+
+        class FaceFeature
+        {
+            public Rect Face { get; set; }
+            public Rect[] Eyes { get; set; }
+        }
+
+        public void Init()
+        {
+            videoCapture = new VideoCapture(0);
+            face_cascade = new CascadeClassifier("C:/Users/Laptop/Desktop/facedetection/haarcascade_frontalface_default.xml");
+            eyes_cascade = new CascadeClassifier("C:/Users/Laptop/Desktop/facedetection/haarcascade_eye.xml");
+        }
+
+        public void Release()
+        {
+            videoCapture.Release();
+            Cv2.DestroyAllWindows();
+        }
+
+        private Mat GrabFrame()
+        {
+            Mat image = new Mat();
+            videoCapture.Read(image);
+            return image;
+        }
+        private Mat ConvertGrayScale(Mat image)
+        {
+            Mat gray = new Mat();
+            Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
+            return gray;
+        }
+
+        private Rect[] DetectFaces(Mat image)
+        {
+            Rect[] faces = face_cascade.DetectMultiScale(image, 1.3, 5);
+            return faces;
+        }
+
+        private Rect[] DetectEyes(Mat image)
+        {
+            Rect[] eyes = eyes_cascade.DetectMultiScale(image);
+            return eyes;
+        }
+
+        private void MarkFeatures(Mat image)
+        {
+            foreach (FaceFeature feature in features)
+            {
+                Cv2.Rectangle(image, feature.Face, new Scalar(0, 255, 0), thickness: 1);
+                var face_region = image[feature.Face];
+                foreach (var eye in feature.Eyes)
+                {
+                    Cv2.Rectangle(face_region, eye, new Scalar(255, 0, 0), thickness: 1);
+                }
+            }
+        }
+
+        public void DetectFeatures()
+        {
+            Mat image;
+            while (true)
+            {
+                image = GrabFrame();
+                Mat gray = ConvertGrayScale(image);
+                Rect[] faces = DetectFaces(gray);
+                if (image.Empty())
+                    continue;
+                features.Clear();
+                foreach (var item in faces)
+                {
+                    Mat face_roi = gray[item];
+
+                    Rect[] eyes = DetectEyes(face_roi);
+
+                    features.Add(new FaceFeature()
+                    {
+                        Face = item,
+                        Eyes = eyes
+                    });
+                }
+                MarkFeatures(image);
+                Cv2.ImShow("frame", image);
+                if (Cv2.WaitKey(1) == (int)ConsoleKey.Escape)
+                    break;
+            }
+        }
+
         static void Main(string[] args)
         {
-
-            bool isCameraRunning = false;
-
-            Cv2.NamedWindow("hej");
-
-            var bild = new VideoCapture(0);
-            Mat frame = new Mat();
-
-            //private Thread camera;
-
-            bild.Open(0);
-            bild.Read(frame);
-
-            while (Cv2.WaitKey(16) != 27)
-            {
-
-                bild.Read(frame);
-                Mat gray = new Mat();
-
-                //Cv2.Canny(frame, 100, 100);
-                Cv2.CvtColor(frame, gray, ColorConversionCodes.BGR2GRAY);
-
-                Cv2.ImShow("hej", gray);
-               //Cv2.ImShow("hej", frame);
-
-            }
-            
-            // The code provided will print ‘Hello World’ to the console.
-            // Press Ctrl+F5 (or go to Debug > Start Without Debugging) to run your app.
-            Console.WriteLine("Hello World!");
-
-            // Go to http://aka.ms/dotnet-get-started-console to continue learning how to build a console app! 
+            Program program = new Program();
+            program.Init();
+            program.DetectFeatures();
+            program.Release();
         }
     }
 }
